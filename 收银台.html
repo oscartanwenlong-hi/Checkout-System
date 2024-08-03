@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>收银台系统</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            position: relative;
+            overflow: auto;
+        }
+        h1, h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #007bff;
+            color: #fff;
+        }
+        button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+            transform: scale(1.1);
+        }
+        .hidden {
+            display: none;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .fade-out {
+            animation: fadeOut 0.5s;
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        .popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #fff;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            z-index: 1000;
+            display: none;
+            animation: popupFadeIn 0.5s;
+        }
+        @keyframes popupFadeIn {
+            from { opacity: 0; transform: translate(-50%, -45%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+        }
+        .flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .btn-group {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .btn-group button {
+            flex: 1;
+            margin: 0 5px;
+        }
+        input[type="text"], input[type="number"], input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            box-sizing: border-box;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .footer {
+            position: fixed;
+            right: 10px;
+            bottom: 10px;
+            font-size: 12px;
+            color: #999;
+        }
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: transparent;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="btn-group">
+            <button id="settings-btn">添加商品</button>
+            <button id="view-btn">查看商品</button>
+            <button id="export-btn">导出商品</button>
+            <button id="import-btn">导入商品</button>
+            <input type="file" id="import-file" class="hidden" accept=".JSON">
+        </div>
+
+        <h1>收银台系统</h1>
+        <label for="product-code">输入商品条码:</label>
+        <input type="text" id="product-code">
+        <table id="product-table">
+            <thead>
+                <tr>
+                    <th>商品名称</th>
+                    <th>条码</th>
+                    <th>价格</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        <div id="total" class="flex">总价: ¥0.00</div>
+        <button id="checkout-btn">结算</button>
+    </div>
+
+    <div id="settings" class="popup">
+        <button class="close-btn" onclick="hidePopup(settings)">❌</button>
+        <h2>添加商品</h2>
+        <form id="product-form">
+            <label for="product-name">商品名称:</label>
+            <input type="text" id="product-name" required>
+            <label for="barcode">条码:</label>
+            <input type="text" id="barcode" required>
+            <label for="price">价格:</label>
+            <input type="number" id="price" step="0.01" required>
+            <button type="submit">添加商品</button>
+        </form>
+    </div>
+
+    <div id="view-products" class="popup">
+        <button class="close-btn" onclick="hidePopup(viewProducts)">❌</button>
+        <h2>商品列表</h2>
+        <table id="product-list-table">
+            <thead>
+                <tr>
+                    <th>商品名称</th>
+                    <th>条码</th>
+                    <th>价格</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+    <div id="custom-popup" class="popup">
+        <button class="close-btn" onclick="hidePopup(customPopup)">❌</button>
+        <h2>输入支付金额</h2>
+        <input type="number" id="amount-paid" step="0.01">
+        <button id="confirm-btn">确认</button>
+    </div>
+    <div class="overlay hidden"></div>
+
+    <div class="footer">导入商品时出现错误？重新加载后重试。     |      由Oscar Tan Wen Long创建</div>
+
+    <script>
+        const settingsBtn = document.getElementById('settings-btn');
+        const settings = document.getElementById('settings');
+        const viewBtn = document.getElementById('view-btn');
+        const exportBtn = document.getElementById('export-btn');
+        const importBtn = document.getElementById('import-btn');
+        const importFile = document.getElementById('import-file');
+        const viewProducts = document.getElementById('view-products');
+        const productForm = document.getElementById('product-form');
+        const productTable = document.getElementById('product-table').getElementsByTagName('tbody')[0];
+        const productListTable = document.getElementById('product-list-table').getElementsByTagName('tbody')[0];
+        const totalDisplay = document.getElementById('total');
+        const productCodeInput = document.getElementById('product-code');
+        const checkoutBtn = document.getElementById('checkout-btn');
+        const customPopup = document.getElementById('custom-popup');
+        const amountPaidInput = document.getElementById('amount-paid');
+        const confirmBtn = document.getElementById('confirm-btn');
+        const overlay = document.querySelector('.overlay');
+        let total = 0;
+        let products = {};
+
+        settingsBtn.addEventListener('click', function() {
+            showPopup(settings);
+        });
+
+        viewBtn.addEventListener('click', function() {
+            showPopup(viewProducts);
+            updateProductListTable();
+        });
+
+        productForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const productName = document.getElementById('product-name').value;
+            const barcode = document.getElementById('barcode').value;
+            const price = parseFloat(document.getElementById('price').value);
+
+            products[barcode] = { name: productName, price: price };
+            showAlert('商品添加成功！');
+            productForm.reset();
+            hidePopup(settings);
+        });
+
+        productCodeInput.addEventListener('input', function() {
+            const code = productCodeInput.value;
+            if (products[code]) {
+                const product = products[code];
+                const row = productTable.insertRow();
+                row.insertCell(0).textContent = product.name;
+                row.insertCell(1).textContent = code;
+                row.insertCell(2).textContent = `¥${product.price.toFixed(2)}`;
+                total += product.price;
+                totalDisplay.textContent = `总价: ¥${total.toFixed(2)}`;
+                productCodeInput.value = '';
+            }
+        });
+
+        checkoutBtn.addEventListener('click', function() {
+            showPopup(customPopup);
+        });
+
+        confirmBtn.addEventListener('click', function() {
+            const amountPaid = parseFloat(amountPaidInput.value);
+            if (!isNaN(amountPaid) && amountPaid >= total) {
+                showAlert(`支付成功！找零: ¥${(amountPaid - total).toFixed(2)}`);
+                total = 0;
+                totalDisplay.textContent = `总价: ¥${total.toFixed(2)}`;
+                productTable.innerHTML = '';
+                amountPaidInput.value = '';
+                hidePopup(customPopup);
+            } else {
+                showAlert('支付金额不足或无效！');
+            }
+        });
+
+        exportBtn.addEventListener('click', function() {
+            const productData = JSON.stringify(products);
+            const blob = new Blob([productData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'products.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        importBtn.addEventListener('click', function() {
+            importFile.click();
+        });
+
+        importFile.addEventListener('change', function() {
+            const file = importFile.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    products = JSON.parse(e.target.result);
+                    showAlert('商品导入成功！');
+                } catch (err) {
+                    showAlert('商品导入失败！');
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        function showPopup(popup) {
+            popup.style.display = 'block';
+            overlay.classList.remove('hidden');
+        }
+
+        function hidePopup(popup) {
+            popup.style.display = 'none';
+            overlay.classList.add('hidden');
+        }
+
+        function updateProductListTable() {
+            productListTable.innerHTML = '';
+            for (const [barcode, product] of Object.entries(products)) {
+                const row = productListTable.insertRow();
+                row.insertCell(0).textContent = product.name;
+                row.insertCell(1).textContent = barcode;
+                row.insertCell(2).textContent = `¥${product.price.toFixed(2)}`;
+                const actionsCell = row.insertCell(3);
+                const editBtn = document.createElement('button');
+                editBtn.textContent = '编辑';
+                editBtn.onclick = function() {
+                    editProduct(barcode);
+                };
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '删除';
+                deleteBtn.onclick = function() {
+                    deleteProduct(barcode);
+                };
+                actionsCell.appendChild(editBtn);
+                actionsCell.appendChild(deleteBtn);
+            }
+        }
+
+        function editProduct(barcode) {
+            const product = products[barcode];
+            if (product) {
+                document.getElementById('product-name').value = product.name;
+                document.getElementById('barcode').value = barcode;
+                document.getElementById('price').value = product.price;
+                deleteProduct(barcode);
+                showPopup(settings);
+            }
+        }
+
+        function deleteProduct(barcode) {
+            delete products[barcode];
+            updateProductListTable();
+        }
+
+        function showAlert(message) {
+            alert(message);
+        }
+    </script>
+</body>
+</html>
